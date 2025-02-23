@@ -20,11 +20,9 @@ import java.util.Scanner;
 public class App {
     public static void main(String[] args) {
         // 1. 创建 WebSocket 客户端
-        List<Transport> transports = Collections.singletonList(
-                new WebSocketTransport(new StandardWebSocketClient())
-        );
-//        WebSocketStompClient stompClient = new WebSocketStompClient(new SockJsClient(transports));
+//        List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
         WebSocketStompClient stompClient = new WebSocketStompClient(new StandardWebSocketClient());
+//        WebSocketStompClient stompClient = new WebSocketStompClient(new SockJsClient(transports));
 
         // 2. 配置消息转换器
         stompClient.setMessageConverter(new StringMessageConverter());
