@@ -23,13 +23,14 @@ public class App {
         List<Transport> transports = Collections.singletonList(
                 new WebSocketTransport(new StandardWebSocketClient())
         );
-        WebSocketStompClient stompClient = new WebSocketStompClient(new SockJsClient(transports));
+//        WebSocketStompClient stompClient = new WebSocketStompClient(new SockJsClient(transports));
+        WebSocketStompClient stompClient = new WebSocketStompClient(new StandardWebSocketClient());
 
         // 2. 配置消息转换器
         stompClient.setMessageConverter(new StringMessageConverter());
 
         // 3. 构建连接地址（带 WS_TOKEN 参数）
-        String wsUrl = "ws://wxcp-test.kaishizq.com/ws?WS_TOKEN=e12826e23b9946f5893dac8ca15be45e";
+        String wsUrl = "ws://localhost:22222/ws?WS_TOKEN=e12826e23b9946f5893dac8ca15be45e";
 
         // 4. 连接服务器
         StompSessionHandler sessionHandler = new MyStompSessionHandler();
