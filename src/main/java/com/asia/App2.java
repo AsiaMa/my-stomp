@@ -16,9 +16,18 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class App2 {
     public static void main(String[] args) {
+        connect();
+        // 保持主线程运行
+        new Scanner(System.in).nextLine();
+    }
+
+    private static void connect() {
         // 1. 创建 WebSocket 传输方式
         List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
 
@@ -38,10 +47,8 @@ public class App2 {
         String wsUrl = "ws://localhost:12356/ws";
         StompSessionHandler sessionHandler = new MyStompSessionHandler();
         stompClient.connectAsync(wsUrl, sessionHandler);
-
-        // 7. 保持主线程运行
-        new Scanner(System.in).nextLine();
     }
+
 
     static class MyStompSessionHandler extends StompSessionHandlerAdapter {
         @Override
@@ -76,6 +83,18 @@ public class App2 {
         @Override
         public void handleTransportError(@NonNull StompSession session, Throwable exception) {
             System.err.println("Transport error: " + exception.getMessage());
+
+            // 连接断开时，尝试重新连接
+            reconnect();
+        }
+
+        private void reconnect() {
+            System.out.println("Attempting to reconnect...");
+            ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+            scheduler.schedule(() -> {
+                connect(); // 尝试重新连接
+                scheduler.shutdown(); // 关闭调度器
+            }, 5, TimeUnit.SECONDS); // 5秒后重新连接
         }
     }
 }
