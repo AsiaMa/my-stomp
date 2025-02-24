@@ -1,7 +1,9 @@
 package com.asia;
 
+import com.asia.domain.Student;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.lang.NonNull;
+import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.*;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
@@ -30,8 +32,8 @@ public class App2 {
         // 4. 创建 WebSocketStompClient
         WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
 
-        // 5. 配置消息转换器
-        stompClient.setMessageConverter(new StringMessageConverter());
+        // 5. 使用 MappingJackson2MessageConverter 替换 StringMessageConverter
+        stompClient.setMessageConverter(new MappingJackson2MessageConverter());
 
         // 6. 连接服务器
         String wsUrl = "ws://localhost:12356/ws";
@@ -53,7 +55,7 @@ public class App2 {
                 @NonNull
                 public Type getPayloadType(@NonNull StompHeaders headers) {
                     System.out.println("getPayloadType方法,headers:" + headers);
-                    return String.class;
+                    return Student.class;
                 }
 
                 @Override
