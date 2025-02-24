@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.*;
+import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.sockjs.client.SockJsClient;
@@ -16,12 +17,27 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class App2 {
+    private static final int MAX_RETRY = 10;
+    private static final long INITIAL_DELAY = 5;
+    private static final AtomicInteger retryCount = new AtomicInteger(0);
+    private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private static WebSocketStompClient stompClient;
+
     public static void main(String[] args) {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("资源释放");
+            scheduler.shutdown();
+            if (stompClient != null) {
+                stompClient.stop();
+            }
+        }));
         connect();
         // 保持主线程运行
         new Scanner(System.in).nextLine();
@@ -38,15 +54,28 @@ public class App2 {
         sockJsClient.setMessageCodec(new Jackson2SockJsMessageCodec(new ObjectMapper()));
 
         // 4. 创建 WebSocketStompClient
-        WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
+        stompClient = new WebSocketStompClient(sockJsClient);
 
         // 5. 使用 MappingJackson2MessageConverter 替换 StringMessageConverter
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
 
+        stompClient.setTaskScheduler(new ConcurrentTaskScheduler(scheduler));
+
         // 6. 连接服务器
         String wsUrl = "ws://localhost:12356/ws";
         StompSessionHandler sessionHandler = new MyStompSessionHandler();
-        stompClient.connectAsync(wsUrl, sessionHandler);
+        CompletableFuture<StompSession> future = stompClient.connectAsync(wsUrl, sessionHandler);
+
+        // 添加异步处理
+        future.whenComplete((session, ex) -> {
+            if (ex != null) {
+                System.err.println("ws连接失败: " + ex.getMessage());
+                MyStompSessionHandler.scheduleReconnect();
+            } else {
+                System.out.println("已连接上ws");
+                retryCount.set(0);
+            }
+        });
     }
 
 
@@ -85,16 +114,22 @@ public class App2 {
             System.err.println("Transport error: " + exception.getMessage());
 
             // 连接断开时，尝试重新连接
-            reconnect();
+            scheduleReconnect();
         }
 
-        private void reconnect() {
-            System.out.println("Attempting to reconnect...");
-            ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        private static synchronized void scheduleReconnect() {
+            if (retryCount.getAndIncrement() >= MAX_RETRY) {
+                System.out.println("达到了最大重连次数。");
+                return;
+            }
+
+            long delay = (long) (INITIAL_DELAY * Math.pow(2, retryCount.get()));
+            System.out.printf("正在重新连接 #%d in %ds...\n", retryCount.get(), delay);
+
             scheduler.schedule(() -> {
-                connect(); // 尝试重新连接
-                scheduler.shutdown(); // 关闭调度器
-            }, 5, TimeUnit.SECONDS); // 5秒后重新连接
+                System.out.println("重连中...");
+                connect();
+            }, delay, TimeUnit.SECONDS);
         }
     }
 }
