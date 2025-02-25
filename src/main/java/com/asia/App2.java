@@ -2,6 +2,8 @@ package com.asia;
 
 import com.asia.domain.Student;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.simp.stomp.*;
@@ -24,6 +26,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class App2 {
+    private static final Logger logger = LoggerFactory.getLogger(App2.class);
+
     private static final Integer RETRY_DELAY = 5;
     // 用于心跳检测的线程池
     private static final ScheduledExecutorService HEARTBEAT_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
@@ -33,7 +37,7 @@ public class App2 {
 
     public static void main(String[] args) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("正在优雅关闭 WebSocket 连接...");
+            logger.info("正在优雅关闭 WebSocket 连接...");
             HEARTBEAT_SCHEDULER.shutdown();
             RECONNECT_SCHEDULER.shutdown();
             if (stompClient != null) {
@@ -71,11 +75,11 @@ public class App2 {
         CompletableFuture<StompSession> future = stompClient.connectAsync(wsUrl, sessionHandler);
 
         future.whenComplete((session, ex) -> {
-            if(session != null){
-                System.out.println("已连接上ws,session:" + session);
+            if (session != null) {
+                logger.info("已连接上ws, session: {}", session);
             }
         }).exceptionally(ex -> {
-            System.err.println("连接失败: " + ex.getMessage());
+            logger.error("连接失败: {}", ex.getMessage());
             // 在这里处理异常，例如重连逻辑
             return null;
         });
@@ -84,20 +88,20 @@ public class App2 {
     static class MyStompSessionHandler extends StompSessionHandlerAdapter {
         @Override
         public void afterConnected(StompSession session, @NonNull StompHeaders connectedHeaders) {
-            System.out.println("连接到ws服务");
+            logger.info("连接到ws服务");
 
             // 订阅接收消息的目的地（根据服务端要求修改）
             session.subscribe("/topic/messages", new StompFrameHandler() {
                 @Override
                 @NonNull
                 public Type getPayloadType(@NonNull StompHeaders headers) {
-                    System.out.println("getPayloadType方法,headers:" + headers);
+                    logger.info("getPayloadType方法,headers:{}", headers);
                     return Student.class;
                 }
 
                 @Override
                 public void handleFrame(@NonNull StompHeaders headers, Object payload) {
-                    System.out.println("Received message: " + payload);
+                    logger.info("接收到消息:{}", payload);
                 }
             });
 
@@ -108,12 +112,12 @@ public class App2 {
         @Override
         public void handleException(@NonNull StompSession session, StompCommand command,
                                     @NonNull StompHeaders headers, @NonNull byte[] payload, Throwable exception) {
-            System.err.println("处理STOMP帧时出现异常: " + exception.getMessage());
+            logger.error("处理STOMP帧时出现异常: {}", exception.getMessage());
         }
 
         @Override
         public void handleTransportError(@NonNull StompSession session, Throwable exception) {
-            System.err.println("websocket传输错误: " + exception.getMessage());
+            logger.error("websocket传输错误: {}", exception.getMessage());
 
             // 连接断开时，尝试重新连接
             if (exception instanceof ResourceAccessException) {
@@ -122,7 +126,7 @@ public class App2 {
         }
 
         private static void scheduleReconnect() {
-            System.out.printf("%d秒后重新连接...\n", RETRY_DELAY);
+            logger.info("{}秒后重新连接...", RETRY_DELAY);
 
             RECONNECT_SCHEDULER.schedule(() -> {
                 System.out.println("正在进行重连...");
