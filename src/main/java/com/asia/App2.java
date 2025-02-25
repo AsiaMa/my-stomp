@@ -1,5 +1,6 @@
 package com.asia;
 
+import com.asia.config.WebSocketConfig;
 import com.asia.handler.MessageHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -17,25 +18,17 @@ import org.springframework.web.socket.sockjs.frame.Jackson2SockJsMessageCodec;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class App2 {
     private static final Logger logger = LoggerFactory.getLogger(App2.class);
-
-    private static final Integer RETRY_DELAY = 5;
-    // 用于心跳检测的线程池
-    private static final ScheduledExecutorService HEARTBEAT_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
-    // 用于重连的线程池（单独管理重连任务）
-    private static final ScheduledExecutorService RECONNECT_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
     private static WebSocketStompClient stompClient;
 
     public static void main(String[] args) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             logger.info("正在优雅关闭 WebSocket 连接...");
-            HEARTBEAT_SCHEDULER.shutdown();
-            RECONNECT_SCHEDULER.shutdown();
+            WebSocketConfig.HEARTBEAT_SCHEDULER.shutdown();
+            WebSocketConfig.RECONNECT_SCHEDULER.shutdown();
             if (stompClient != null) {
                 stompClient.stop();
             }
@@ -63,20 +56,19 @@ public class App2 {
         // 5. 使用 MappingJackson2MessageConverter 替换 StringMessageConverter
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
 
-        stompClient.setTaskScheduler(new ConcurrentTaskScheduler(HEARTBEAT_SCHEDULER));
+        stompClient.setTaskScheduler(new ConcurrentTaskScheduler(WebSocketConfig.HEARTBEAT_SCHEDULER));
 
         // 6. 连接服务器
-        String wsUrl = "ws://localhost:12356/ws";
         StompSessionHandler sessionHandler = new MessageHandler();
-        stompClient.connectAsync(wsUrl, sessionHandler);
+        stompClient.connectAsync(WebSocketConfig.WEBSOCKET_URL, sessionHandler);
     }
 
     public static void scheduleReconnect() {
-        logger.info("{}秒后重新连接...", RETRY_DELAY);
+        logger.info("{}秒后重新连接...", WebSocketConfig.RETRY_DELAY);
 
-        RECONNECT_SCHEDULER.schedule(() -> {
+        WebSocketConfig.RECONNECT_SCHEDULER.schedule(() -> {
             System.out.println("正在进行重连...");
             connect();
-        }, RETRY_DELAY, TimeUnit.SECONDS);
+        }, WebSocketConfig.RETRY_DELAY, TimeUnit.SECONDS);
     }
 }
