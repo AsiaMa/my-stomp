@@ -17,16 +17,15 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class App2 {
-    private static final int MAX_RETRY = 10;
-    private static final long INITIAL_DELAY = 5;
-    private static final AtomicInteger retryCount = new AtomicInteger(0);
+    private static final Integer retryDelay = 5000;
+    // private static final AtomicInteger retryCount = new AtomicInteger(0);
+    private static final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private static final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private static WebSocketStompClient stompClient;
 
@@ -64,20 +63,8 @@ public class App2 {
         // 6. 连接服务器
         String wsUrl = "ws://localhost:12356/ws";
         StompSessionHandler sessionHandler = new MyStompSessionHandler();
-        CompletableFuture<StompSession> future = stompClient.connectAsync(wsUrl, sessionHandler);
-
-        // 添加异步处理
-        future.whenComplete((session, ex) -> {
-            if (ex != null) {
-                System.err.println("ws连接失败: " + ex.getMessage());
-                MyStompSessionHandler.scheduleReconnect();
-            } else {
-                System.out.println("已连接上ws");
-                retryCount.set(0);
-            }
-        });
+        stompClient.connectAsync(wsUrl, sessionHandler);
     }
-
 
     static class MyStompSessionHandler extends StompSessionHandlerAdapter {
         @Override
@@ -117,19 +104,19 @@ public class App2 {
             scheduleReconnect();
         }
 
-        private static synchronized void scheduleReconnect() {
-            if (retryCount.getAndIncrement() >= MAX_RETRY) {
-                System.out.println("达到了最大重连次数。");
-                return;
+        private static void scheduleReconnect() {
+            if (!reconnecting.compareAndSet(false, true)) {
+                System.out.println("已经在进行重连,return此次重连");
+                return;  // 如果已经有重连任务在执行，则直接返回
             }
 
-            long delay = (long) (INITIAL_DELAY * Math.pow(2, retryCount.get()));
-            System.out.printf("正在重新连接 #%d in %ds...\n", retryCount.get(), delay);
+            System.out.printf("%d秒后重新连接...\n", retryDelay);
 
             scheduler.schedule(() -> {
-                System.out.println("重连中...");
+                System.out.println("马上进行重连...");
                 connect();
-            }, delay, TimeUnit.SECONDS);
+                reconnecting.set(false);
+            }, 5000, TimeUnit.SECONDS);
         }
     }
 }
