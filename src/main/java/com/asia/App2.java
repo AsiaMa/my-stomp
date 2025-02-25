@@ -1,14 +1,12 @@
 package com.asia;
 
-import com.asia.domain.Student;
+import com.asia.handler.MessageHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.lang.NonNull;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
-import org.springframework.messaging.simp.stomp.*;
+import org.springframework.messaging.simp.stomp.StompSessionHandler;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
-import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.sockjs.client.SockJsClient;
@@ -16,7 +14,6 @@ import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 import org.springframework.web.socket.sockjs.frame.Jackson2SockJsMessageCodec;
 
-import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
@@ -70,57 +67,16 @@ public class App2 {
 
         // 6. 连接服务器
         String wsUrl = "ws://localhost:12356/ws";
-        StompSessionHandler sessionHandler = new MyStompSessionHandler();
+        StompSessionHandler sessionHandler = new MessageHandler();
         stompClient.connectAsync(wsUrl, sessionHandler);
     }
 
-    static class MyStompSessionHandler extends StompSessionHandlerAdapter {
-        @Override
-        public void afterConnected(StompSession session, @NonNull StompHeaders connectedHeaders) {
-            logger.info("连接到ws服务");
+    public static void scheduleReconnect() {
+        logger.info("{}秒后重新连接...", RETRY_DELAY);
 
-            // 订阅接收消息的目的地（根据服务端要求修改）
-            session.subscribe("/topic/messages", new StompFrameHandler() {
-                @Override
-                @NonNull
-                public Type getPayloadType(@NonNull StompHeaders headers) {
-                    logger.info("getPayloadType方法,headers:{}", headers);
-                    return Student.class;
-                }
-
-                @Override
-                public void handleFrame(@NonNull StompHeaders headers, Object payload) {
-                    logger.info("接收到消息:{}", payload);
-                }
-            });
-
-            // 发送测试消息（可选）
-            session.send("/app/hello", "嘿嘿哈哈哈");
-        }
-
-        @Override
-        public void handleException(@NonNull StompSession session, StompCommand command,
-                                    @NonNull StompHeaders headers, @NonNull byte[] payload, Throwable exception) {
-            logger.error("处理STOMP帧时出现异常: {}", exception.getMessage());
-        }
-
-        @Override
-        public void handleTransportError(@NonNull StompSession session, Throwable exception) {
-            logger.error("websocket传输错误: {}", exception.getMessage());
-
-            // 连接断开时，尝试重新连接
-            if (exception instanceof ResourceAccessException) {
-                scheduleReconnect();
-            }
-        }
-
-        private static void scheduleReconnect() {
-            logger.info("{}秒后重新连接...", RETRY_DELAY);
-
-            RECONNECT_SCHEDULER.schedule(() -> {
-                System.out.println("正在进行重连...");
-                connect();
-            }, RETRY_DELAY, TimeUnit.SECONDS);
-        }
+        RECONNECT_SCHEDULER.schedule(() -> {
+            System.out.println("正在进行重连...");
+            connect();
+        }, RETRY_DELAY, TimeUnit.SECONDS);
     }
 }
