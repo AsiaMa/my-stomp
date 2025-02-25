@@ -2,7 +2,6 @@ package com.asia.manager;
 
 import com.asia.config.WebSocketConfig;
 import com.asia.handler.MessageHandler;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -13,7 +12,6 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
-import org.springframework.web.socket.sockjs.frame.Jackson2SockJsMessageCodec;
 
 import java.util.Collections;
 import java.util.List;
