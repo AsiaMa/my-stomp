@@ -1,7 +1,7 @@
 package com.asia.handler;
 
-import com.asia.App2;
 import com.asia.domain.Student;
+import com.asia.manager.WebSocketManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
@@ -46,9 +46,7 @@ public class MessageHandler extends StompSessionHandlerAdapter {
 
         // 连接断开时，尝试重新连接
         if (exception instanceof ResourceAccessException) {
-            App2.scheduleReconnect();
+            WebSocketManager.getInstance().connect();
         }
     }
-
-
 }
