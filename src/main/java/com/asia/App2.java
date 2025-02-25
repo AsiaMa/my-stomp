@@ -20,7 +20,6 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -72,17 +71,7 @@ public class App2 {
         // 6. 连接服务器
         String wsUrl = "ws://localhost:12356/ws";
         StompSessionHandler sessionHandler = new MyStompSessionHandler();
-        CompletableFuture<StompSession> future = stompClient.connectAsync(wsUrl, sessionHandler);
-
-        future.whenComplete((session, ex) -> {
-            if (session != null) {
-                logger.info("已连接上ws, session: {}", session);
-            }
-        }).exceptionally(ex -> {
-            logger.error("连接失败: {}", ex.getMessage());
-            // 在这里处理异常，例如重连逻辑
-            return null;
-        });
+        stompClient.connectAsync(wsUrl, sessionHandler);
     }
 
     static class MyStompSessionHandler extends StompSessionHandlerAdapter {
