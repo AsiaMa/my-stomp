@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 public class WebSocketManager {
     private static final Logger logger = LoggerFactory.getLogger(WebSocketManager.class);
-    private final ScheduledExecutorService reconnectScheduler = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService RECONNECT_SCHEDULER = Executors.newSingleThreadScheduledExecutor();
     private static final ScheduledExecutorService HEARTBEAT_SCHEDULER = Executors.newSingleThreadScheduledExecutor(); // 心跳检测线程池
     private static WebSocketManager instance;
     private final boolean useStandardWebSocket;
@@ -71,7 +71,7 @@ public class WebSocketManager {
 
     public void scheduleReconnect() {
         logger.info("{} 秒后尝试重连...", WebSocketConfig.RETRY_DELAY);
-        reconnectScheduler.schedule(this::connect, WebSocketConfig.RETRY_DELAY, TimeUnit.SECONDS);
+        RECONNECT_SCHEDULER.schedule(this::connect, WebSocketConfig.RETRY_DELAY, TimeUnit.SECONDS);
     }
 
     public void disconnect() {
@@ -79,6 +79,6 @@ public class WebSocketManager {
 
         stompClient.stop();
         HEARTBEAT_SCHEDULER.shutdown();
-        reconnectScheduler.shutdown();
+        RECONNECT_SCHEDULER.shutdown();
     }
 }
