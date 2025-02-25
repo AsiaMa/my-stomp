@@ -51,7 +51,7 @@ public class WebSocketManager {
             logger.info("使用 SockJS 方式连接...");
             List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
             SockJsClient sockJsClient = new SockJsClient(transports);
-            sockJsClient.setMessageCodec(new Jackson2SockJsMessageCodec(new ObjectMapper()));
+            // sockJsClient.setMessageCodec(new Jackson2SockJsMessageCodec(new ObjectMapper()));
             stompClient = new WebSocketStompClient(sockJsClient);
         }
 
@@ -60,11 +60,10 @@ public class WebSocketManager {
     }
 
     public void connect() {
-        logger.info("尝试连接 WebSocket...");
         CompletableFuture<StompSession> feature = stompClient.connectAsync(WebSocketConfig.WEBSOCKET_URL, messageHandler);
 
         feature.thenApply(session -> {
-            logger.info("WebSocket 连接成功: Session ={}", session);
+            logger.info("WebSocket 连接成功: Session Id ={}", session.getSessionId());
             return session;
         }).exceptionally(ex -> {
             logger.error("WebSocket 连接失败: {}", ex.getMessage());
