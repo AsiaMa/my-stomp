@@ -1,5 +1,6 @@
 package com.asia.handler;
 
+import com.asia.config.WebSocketConfig;
 import com.asia.domain.Student;
 import com.asia.manager.WebSocketManager;
 import org.slf4j.Logger;
@@ -46,7 +47,7 @@ public class MessageHandler extends StompSessionHandlerAdapter {
 
         // 连接断开时，尝试重新连接
         if (exception instanceof ResourceAccessException) {
-            WebSocketManager.getInstance().scheduleReconnect();
+            WebSocketManager.getInstance(WebSocketConfig.USE_STANDARD_WEB_SOCKET).scheduleReconnect();
         }
     }
 }

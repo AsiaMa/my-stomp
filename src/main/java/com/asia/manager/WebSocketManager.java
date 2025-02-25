@@ -27,26 +27,34 @@ public class WebSocketManager {
     private final ScheduledExecutorService reconnectScheduler = Executors.newSingleThreadScheduledExecutor();
     private static final ScheduledExecutorService HEARTBEAT_SCHEDULER = Executors.newSingleThreadScheduledExecutor(); // 心跳检测线程池
     private static WebSocketManager instance;
+    private final boolean useStandardWebSocket;
     private WebSocketStompClient stompClient;
     private final MessageHandler messageHandler = new MessageHandler();
 
-    private WebSocketManager() {
+    private WebSocketManager(boolean useStandardWebSocket) {
+        this.useStandardWebSocket = useStandardWebSocket;
         initializeClient();
     }
 
-    public static synchronized WebSocketManager getInstance() {
+    public static synchronized WebSocketManager getInstance(boolean useStandardWebSocket) {
         if (instance == null) {
-            instance = new WebSocketManager();
+            instance = new WebSocketManager(useStandardWebSocket);
         }
         return instance;
     }
 
     private void initializeClient() {
-        List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
-        SockJsClient sockJsClient = new SockJsClient(transports);
-        sockJsClient.setMessageCodec(new Jackson2SockJsMessageCodec(new ObjectMapper()));
+        if (useStandardWebSocket) {
+            logger.info("使用标准 WebSocket 方式连接...");
+            stompClient = new WebSocketStompClient(new StandardWebSocketClient());
+        } else {
+            logger.info("使用 SockJS 方式连接...");
+            List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
+            SockJsClient sockJsClient = new SockJsClient(transports);
+            sockJsClient.setMessageCodec(new Jackson2SockJsMessageCodec(new ObjectMapper()));
+            stompClient = new WebSocketStompClient(sockJsClient);
+        }
 
-        stompClient = new WebSocketStompClient(sockJsClient);
         stompClient.setMessageConverter(new MappingJackson2MessageConverter());
         stompClient.setTaskScheduler(new ConcurrentTaskScheduler(HEARTBEAT_SCHEDULER));
     }
