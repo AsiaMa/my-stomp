@@ -71,11 +71,7 @@ public class App2 {
         CompletableFuture<StompSession> future = stompClient.connectAsync(wsUrl, sessionHandler);
 
         future.whenComplete((session, ex) -> {
-            if (ex != null) {
-                System.err.println("ws连接失败: " + ex.getMessage());
-            } else {
-                System.out.println("已连接上ws");
-            }
+            System.out.println("已连接上ws,session:" + session);
         }).exceptionally(ex -> {
             System.err.println("连接失败: " + ex.getMessage());
             // 在这里处理异常，例如重连逻辑
