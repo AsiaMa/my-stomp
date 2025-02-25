@@ -46,7 +46,7 @@ public class MessageHandler extends StompSessionHandlerAdapter {
 
         // 连接断开时，尝试重新连接
         if (exception instanceof ResourceAccessException) {
-            WebSocketManager.getInstance().connect();
+            WebSocketManager.getInstance().scheduleReconnect();
         }
     }
 }

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
@@ -16,6 +17,7 @@ import org.springframework.web.socket.sockjs.frame.Jackson2SockJsMessageCodec;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -51,13 +53,14 @@ public class WebSocketManager {
 
     public void connect() {
         logger.info("尝试连接 WebSocket...");
-        stompClient.connectAsync(WebSocketConfig.WEBSOCKET_URL, messageHandler).whenComplete((session, throwable) -> {
-            if (throwable == null) {
-                logger.info("WebSocket 连接成功");
-            } else {
-                logger.error("WebSocket 连接失败: {}", throwable.getMessage());
-                scheduleReconnect();
-            }
+        CompletableFuture<StompSession> feature = stompClient.connectAsync(WebSocketConfig.WEBSOCKET_URL, messageHandler);
+
+        feature.thenApply(session -> {
+            logger.info("WebSocket 连接成功: Session ={}", session);
+            return session;
+        }).exceptionally(ex -> {
+            logger.error("WebSocket 连接失败: {}", ex.getMessage());
+            return null;
         });
     }
 
